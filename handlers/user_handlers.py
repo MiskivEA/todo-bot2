@@ -1,17 +1,25 @@
 from aiogram import Router, F
-from aiogram.filters import CommandStart, Command
+from aiogram.filters import CommandStart, StateFilter
+from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
-
+from aiogram.fsm.state import default_state, State, StatesGroup
 from database.crud import create_task, get_tasks_by_id, delete_task_by_id, done_task_by_id
-from database.models import Task, SchemaTask
+from keyboards.task_keyboards import keyboard
 
 router = Router()
+
+
+class InputStateGroup(StatesGroup):
+    idx = State()
+    task_text = State()
 
 
 @router.message(CommandStart())
 async def cmd_start(message: Message):
     """ /start """
-    await message.answer('Вас приветствует TODO-bot!\nДля получения справки используйте команду /help')
+
+    await message.answer('Вас приветствует TODO-bot!\nДля получения справки используйте команду /help',
+                         reply_markup=keyboard)
 
 
 @router.message(F.text == '/help')
@@ -21,79 +29,46 @@ async def cmd_help(message: Message):
                          '/add [текст задачи] - добавление задачи\n'
                          '/done [индекс задачи] - отметить задачу выполненной\n'
                          '/list - показать все\n'
-                         '/delete [индекс задачи] удалить по индексу\n')
+                         '/delete [индекс задачи] удалить по индексу\n'
+                         '/cancel - выход из состояния воода данных(в режиме передачи данных)')
 
 
-# ########################################## #
-# ################ TASK #################### #
-# ########################################## #
+@router.callback_query(F.data == 'cancel_input_data', ~StateFilter(default_state))
+async def cancel_input_data(callback: CallbackQuery, state: FSMContext):
+    await callback.answer('Состояние сброшено в дефолт,\nввод данных отменен')
+    await state.clear()
 
 
-@router.message(F.text.startswith('/add '))
-async def add_task(message: Message):
-    """ /add -  Добавление задачи """
-    task_text = message.text.split('/add')[-1]
-    create_task(task_text, message.from_user.id)
-    await message.answer('Задача добавлена')
+@router.callback_query(F.data == 'cancel_input_data', StateFilter(default_state))
+async def cancel_input_data(callback: CallbackQuery, state: FSMContext):
+    await callback.answer('Состояние сброшено в дефолт,\nввод данных отменен')
+    await state.clear()
 
 
-@router.message(F.text.startswith('/done '))
-async def done_task(message: Message):
-    """ /done - Маркировка задачи как выполненная """
-    task_id = message.text.split(' ')[-1]
-    done_task_by_id(task_id, message.from_user.id)
-    await message.answer('Задача отмечена выполненной')
+# #############################################################################
+@router.callback_query(F.data == 'add_task', StateFilter(default_state))
+async def add_cmd(callback: CallbackQuery, state: FSMContext):
+    """ /add """
+    await callback.message.answer('Введите текст вашей задачи')
+    await callback.answer('Wait')
+    await state.set_state(InputStateGroup.task_text)
 
 
-@router.message(F.text == '/list')
-async def list_tasks(message: Message):
-    """ /list - Получение списка всех задач """
-    tasks = get_tasks_by_id(message.from_user.id)
-    for task in tasks:
-        delete_button = InlineKeyboardButton(text='Удалить ❌', callback_data=f'delete_task {task.id}')
-        done_button = InlineKeyboardButton(text='Выполнено', callback_data=f'done_task {task.id}')
-        delete_task_kb = InlineKeyboardMarkup(inline_keyboard=[[delete_button, done_button]])
-        await message.answer(f'ID: {task.id}\n'
-                             f'TITLE: {task.title}\n'
-                             f'DESCRIPTION: {task.description}\n'
-                             f'STATUS: {task.status}',
-                             reply_markup=delete_task_kb)
+@router.message(F.text, StateFilter(InputStateGroup.task_text))
+async def input_task_text(message: Message, state: FSMContext):
+    if isinstance(message.text, str):
+        await message.answer(f'Задача:\n'
+                             f'{message.text}\n'
+                             f'Введите число')
+        await state.set_state(InputStateGroup.idx)
+    else:
+        await message.answer('Некорректный ввод, проверьте ваще сообщение')
 
 
-@router.callback_query(F.data.startswith('delete_task'))
-async def delete_task_button_press(callback: CallbackQuery):
-    """ Удаление задачи кнопкой """
-    task_id = callback.data.split(' ')[-1]
-    delete_task_by_id(task_id, callback.from_user.id)
-    await callback.message.edit_text(f'Задача [{task_id}] удалена')
+@router.message(F.text, StateFilter(InputStateGroup.idx))
+async def input_id(message: Message, state: FSMContext):
+    await message.answer(f'ПОлучено число {message.text}\n'
+                         f'Данные приняты. Состояние сброшено')
+    await state.clear()
 
-
-@router.callback_query(F.data.startswith('done_task'))
-async def delete_task_button_press(callback: CallbackQuery):
-    """ Удаление задачи кнопкой """
-    task_id = callback.data.split(' ')[-1]
-    done_task_by_id(task_id, callback.from_user.id)
-    await callback.message.edit_text(f'{callback.message.text}\nЗадача [{task_id}] Выполнена')
-
-
-@router.message(F.text.startswith('/delete '))
-async def delete_task(message: Message):
-    """ /delete - Удаление задачи командой"""
-    task_id = message.text.split(' ')[-1]
-    delete_task_by_id(task_id, message.from_user.id)
-    await message.answer(f'Задача [{task_id}] удалена')
-
-
-# ################ END #########################
-@router.message(F.text == '/add')
-async def incorrect_add(message: Message):
-    """ Срабатывает, когда команда требует аргументов,
-    но не получает их при вызове """
-    await message.answer('<b> ERROR </b>\n'
-                         'Эта команда требует данные для обработки')
-
-
-@router.message()
-async def i_dont_know(message: Message):
-    """ Срабатывает в любой непонятной ситуации =)"""
-    await message.answer('<b>Такой команды пока нет =(</b>')
+# #######################################################################

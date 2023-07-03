@@ -11,16 +11,12 @@ async def main():
     config = load_config()
     bot = Bot(token=config.bot.token,
               parse_mode='HTML')
-    dp = Dispatcher()
+    dp = Dispatcher(storage=config.storage)
     dp.include_router(router)
 
     main_menu_commands = [
-        BotCommand(command='/help',
-                   description='Справка по работе бота'),
-        BotCommand(command='/support',
-                   description='Поддержка'),
-        BotCommand(command='/contacts',
-                   description='Другие способы связи'),
+        BotCommand(command='/start',
+                   description='Run bot'),
         ]
 
     await bot.set_my_commands(main_menu_commands)
