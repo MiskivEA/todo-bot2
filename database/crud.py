@@ -5,20 +5,20 @@ from database.database import engine
 from database.models import Task
 
 
-def create_task(task_text, telegram_id):
+def create_task(task_title, task_description, telegram_id):
     """Создает задачу для текущего пользователя"""
     with Session(engine) as db:
         task = Task(
             telegram_id=telegram_id,
-            title=task_text[:10],
-            description=task_text,
+            title=task_title,
+            description=task_description,
             status=False,
         )
         db.add(task)
         db.commit()
 
 
-def get_tasks_by_id(telegram_id):
+def get_tasks(telegram_id):
     """Возвращает все задачи текущего пользователя"""
     session = Session(engine)
     stmt = select(Task).where(Task.telegram_id == telegram_id)
