@@ -137,7 +137,7 @@ async def done_task(message: Message, state: FSMContext):
 @router.callback_query(F.data == 'open_task')
 async def request_id_for_done(callback: CallbackQuery, state: FSMContext):
     """ Переход в ожидание ввода ИД задачи """
-    await callback.message.answer('Введи ИД задачи ждя завершения')
+    await callback.message.answer('Введи ИД задачи для открытия')
     await callback.answer()
     await state.set_state(InputStateGroup.open_task)
 
