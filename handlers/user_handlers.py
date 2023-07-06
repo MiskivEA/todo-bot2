@@ -1,5 +1,5 @@
 from aiogram import Router, F
-from aiogram.filters import CommandStart, StateFilter
+from aiogram.filters import CommandStart, StateFilter, Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from aiogram.fsm.state import default_state, State, StatesGroup
@@ -18,33 +18,15 @@ class InputStateGroup(StatesGroup):
     open_task = State()
 
 
-@router.message(CommandStart())
-async def cmd_start(message: Message):
-    """ /start """
-
-    await message.answer('Вас приветствует TODO-bot!\nДля получения справки используйте команду /help',
-                         reply_markup=keyboard)
-
-
-@router.message(F.text == '/help')
+@router.message(Command(commands=['start', 'help']))
 async def cmd_help(message: Message):
     """ /help """
-    await message.answer('<b>Доступные команды:</b>\n\n'
-                         '/add [текст задачи] - добавление задачи\n'
-                         '/done [индекс задачи] - отметить задачу выполненной\n'
-                         '/list - показать все\n'
-                         '/delete [индекс задачи] удалить по индексу\n'
-                         '/cancel - выход из состояния воода данных(в режиме передачи данных)')
+    await message.answer('Вас приветствует TODO-bot!', reply_markup=keyboard)
 
 
-@router.callback_query(F.data == 'cancel_input_data', ~StateFilter(default_state))
+@router.callback_query(F.data == 'cancel_input_data')
 async def cancel_input_data(callback: CallbackQuery, state: FSMContext):
-    await callback.answer('Состояние сброшено в дефолт,\nввод данных отменен')
-    await state.clear()
-
-
-@router.callback_query(F.data == 'cancel_input_data', StateFilter(default_state))
-async def cancel_input_data(callback: CallbackQuery, state: FSMContext):
+    """ Отмена ввода данных и сброс машины состояний """
     await callback.answer('Состояние сброшено в дефолт,\nввод данных отменен')
     await state.clear()
 
