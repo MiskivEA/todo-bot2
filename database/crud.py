@@ -27,6 +27,7 @@ def get_tasks(telegram_id):
 
 
 def delete_task_by_id(task_id, telegram_id):
+    """ Удаление задачи по индексу """
     session = Session(engine)
     query = delete(Task).where(Task.telegram_id == telegram_id, Task.id == task_id)
     session.execute(query)
@@ -34,6 +35,7 @@ def delete_task_by_id(task_id, telegram_id):
 
 
 def done_task_by_id(task_id, telegram_id):
+    """ Отметить статус задачи как "выполнено" """
     session = Session(engine)
     query = update(Task).where(Task.telegram_id == telegram_id, Task.id == task_id).values(status=True)
     session.execute(query)
@@ -41,6 +43,7 @@ def done_task_by_id(task_id, telegram_id):
 
 
 def get_task_by_id(task_id, telegram_id):
+    """ Получение задачи по индексу """
     session = Session(engine)
     query = select(Task).where(Task.telegram_id == telegram_id, Task.id == task_id)
     task = session.execute(query).scalar()

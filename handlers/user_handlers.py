@@ -1,7 +1,7 @@
 from aiogram import Router, F
-from aiogram.filters import CommandStart, StateFilter, Command
+from aiogram.filters import StateFilter, Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.state import default_state, State, StatesGroup
 from database.crud import create_task, delete_task_by_id, done_task_by_id, get_tasks, get_task_by_id
 from keyboards.task_keyboards import keyboard
@@ -31,7 +31,6 @@ async def cancel_input_data(callback: CallbackQuery, state: FSMContext):
     await state.clear()
 
 
-# #############################################################################
 @router.callback_query(F.data == 'add_task', StateFilter(default_state))
 async def add_cmd(callback: CallbackQuery, state: FSMContext):
     """ /add """
@@ -66,7 +65,6 @@ async def input_description(message: Message, state: FSMContext):
     await state.clear()
 
 
-# #######################################################################
 @router.callback_query(F.data == 'show_tasks')
 async def show_tasks(callback: CallbackQuery):
     """ Вывод всех задач """
@@ -79,7 +77,6 @@ async def show_tasks(callback: CallbackQuery):
     await callback.answer()
 
 
-# ##########################################################################
 @router.callback_query(F.data == 'done_task')
 async def request_id_for_done(callback: CallbackQuery, state: FSMContext):
     """ Переход в ожидание ввода ИД задачи """
@@ -97,7 +94,6 @@ async def done_task(message: Message, state: FSMContext):
     await state.clear()
 
 
-# #################################################################
 @router.callback_query(F.data == 'delete_task')
 async def request_id_for_done(callback: CallbackQuery, state: FSMContext):
     """ Переход в ожидание ввода ИД задачи """
@@ -114,8 +110,6 @@ async def done_task(message: Message, state: FSMContext):
     await state.clear()
 
 
-# ################################################
-
 @router.callback_query(F.data == 'open_task')
 async def request_id_for_done(callback: CallbackQuery, state: FSMContext):
     """ Переход в ожидание ввода ИД задачи """
@@ -126,7 +120,7 @@ async def request_id_for_done(callback: CallbackQuery, state: FSMContext):
 
 @router.message(F.text, StateFilter(InputStateGroup.open_task))
 async def open_task(message: Message, state: FSMContext):
-    """ Открыть задачу"""
+    """ Открыть задачу """
     idx = message.text
     task = get_task_by_id(idx, message.from_user.id)
     await message.answer(f'Задача {task.id}\n\n'
